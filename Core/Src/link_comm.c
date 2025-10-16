@@ -53,8 +53,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
             rx_buffer[last_rx_index++] = rx_data;
         }
         HAL_UART_Receive_IT(link_uart, &rx_char, 1);
-    } else if (huart->Instance == UART4) {
-        Dynamixel_Handle.dma_rx_complete_flag = true;
+    } else if (huart->Instance == UART4 || huart->Instance == UART5) {
+        Dynamixel_onDmaRxComplete(huart);
     }
 }
 

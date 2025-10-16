@@ -14,14 +14,18 @@
 
 typedef struct {
     UART_HandleTypeDef* huart;
-    GPIO_TypeDef* dir_port;
-    uint16_t dir_pin;
-    volatile bool dma_rx_complete_flag;
-} Dynamixel_t;
+    GPIO_TypeDef*       dir_port;
+    uint16_t            dir_pin;
+    volatile bool       dma_rx_complete_flag;
+} DynamixelBus_t;
 
-extern Dynamixel_t Dynamixel_Handle;
+extern DynamixelBus_t Dynamixel_Handle_R;
+extern DynamixelBus_t Dynamixel_Handle_L;
 
-void Dynamixel_begin(UART_HandleTypeDef* uart, GPIO_TypeDef* dir_port, uint16_t pin);
+void Dynamixel_begin_right(UART_HandleTypeDef* uart, GPIO_TypeDef* dir_port, uint16_t pin);
+void Dynamixel_begin_left (UART_HandleTypeDef* uart, GPIO_TypeDef* dir_port, uint16_t pin);
+void Dynamixel_onDmaRxComplete(UART_HandleTypeDef *huart);
+
 void Dynamixel_setDirPin(bool is_tx);
 
 void Dynamixel_transmitPacket(uint8_t id, uint8_t instruction, const uint8_t* params, uint16_t param_len);

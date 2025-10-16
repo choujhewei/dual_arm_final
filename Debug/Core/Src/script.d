@@ -1,4 +1,4 @@
-Core/Src/dynamixel.o: ../Core/Src/dynamixel.c ../Core/Inc/dynamixel.h \
+Core/Src/script.o: ../Core/Src/script.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -30,8 +30,8 @@ Core/Src/dynamixel.o: ../Core/Src/dynamixel.c ../Core/Inc/dynamixel.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/main.h
-../Core/Inc/dynamixel.h:
+ ../Core/Inc/script.h ../Core/Inc/motion.h
+../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h:
@@ -63,4 +63,5 @@ Core/Src/dynamixel.o: ../Core/Src/dynamixel.c ../Core/Inc/dynamixel.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
-../Core/Inc/main.h:
+../Core/Inc/script.h:
+../Core/Inc/motion.h:

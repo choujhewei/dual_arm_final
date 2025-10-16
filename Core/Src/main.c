@@ -33,6 +33,8 @@
 #include "servo.h"
 #include "grip.h"
 #include "dwt_util.h"
+#include "script.h"
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,7 +58,16 @@ PUTCHAR_PROTOTYPE
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+DualStep demo[] = {
+    { .R = { +30.0f, NAN,    NAN,   NAN,   NAN,   NAN,   NAN },
+      .L = { NAN,    NAN,   -45.0f, NAN,   NAN,   NAN,   NAN } },
 
+    { .R = { NAN,   +60.0f, -20.0f, NAN,   NAN,   NAN,   NAN },
+      .L = { NAN,    NAN,    NAN,   NAN,   NAN,   NAN,   NAN } },
+
+    { .R = { NAN,    NAN,    NAN,  +15.0f, NAN,   NAN,   NAN },
+      .L = { +10.0f, NAN,    NAN,   NAN,   NAN,   NAN,   NAN } },
+};
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -117,12 +128,14 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_TIM3_Init();
+  MX_UART5_Init();
   /* USER CODE BEGIN 2 */
   #if defined(USE_MY_DWT)
   DWT_Init();
   #endif
 
-  Dynamixel_begin(&huart4, GPIOA, GPIO_PIN_4);
+  Dynamixel_begin_right(&huart4, GPIOA, GPIO_PIN_4);
+  Dynamixel_begin_left (&huart5, GPIOC, GPIO_PIN_11);
   LinkComm_Init(&huart6);
   init_dynamixels();
 
@@ -145,6 +158,7 @@ int main(void)
 //    sample_and_print();
 //    GripStop_Update(&g1);
 //    GripStop_Update(&g2);
+//    execute_dual_script(demo, sizeof(demo)/sizeof(demo[0]), 8000);
     HAL_Delay(2);
     /* USER CODE END WHILE */
 

@@ -173,12 +173,10 @@ void parse_and_control(char* input) {
         if (n == 0) { p = end + 1; continue; }
 
         const uint16_t ADDR_GOAL_POSITION = 116;
-        float target_deg0_360[7];
 
         for (uint8_t k = 0; k < n; k++) {
             float f0_360 = wrap360(ang_rl[k] + 180.0f);
             int32_t goal_cnt = deg0to360_to_cnt(f0_360);
-            target_deg0_360[k] = f0_360;
 
             printf("Moving ID %d to %.1f deg (cnt=%ld)\r\n", ids[k], f0_360, (long)goal_cnt);
             Dynamixel_write(ids[k], ADDR_GOAL_POSITION, (uint8_t*)&goal_cnt, 4);

@@ -63,6 +63,11 @@ void Error_Handler(void);
 
 extern const uint8_t DXL_ID_LIST[DXL_ID_CNT];
 extern const float   VEL_DPS[DXL_ID_CNT];
+
+#define DXL_RIGHT_ID_MIN  1
+#define DXL_RIGHT_ID_MAX  7
+#define DXL_LEFT_ID_MIN   8
+#define DXL_LEFT_ID_MAX   14
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

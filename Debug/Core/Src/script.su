@@ -1,0 +1,2 @@
+../Core/Src/script.c:15:13:build_cmd_from_step	88	static
+../Core/Src/script.c:40:6:execute_dual_script	288	static

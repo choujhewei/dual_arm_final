@@ -70,33 +70,40 @@ GripStopState GripStop_Update(GripStop* g)
   Servo_Update(g->servo);
 
   uint16_t raw = read_pressure_raw(g->side);
-//  printf("Press=%u, deb_cnt=%u, stopped=%d\r\n", raw, g->deb_cnt, g->stopped);
+  // printf("Press=%u, deb_cnt=%u, stopped=%d\r\n", raw, g->deb_cnt, g->stopped);
 
   if (g->stopped) return g->state;
 
   if (raw >= g->press_thresh_raw) {
-     g->deb_cnt++;
-     if (g->deb_cnt >= g->debounce_cnt_req) {
-       float hold = g->servo->cur_deg;
-       Servo_SetEmaAlpha(g->servo, 1.0f);
-       Servo_SetMaxSpeedDps(g->servo, 999.0f);
-       Servo_WriteDegrees(g->servo, hold);
-       Servo_SetTargetDegrees(g->servo, hold);
-       g->stopped = 1;
-       g->state   = GRIP_TRIGGERED;
-       g->hold_deg = hold;
-       printf("[STOP] Triggered at press=%u, angle=%.1f°\r\n", raw, hold);
-       return g->state;
-     }
-   } else {
-     g->deb_cnt = 0;
-   }
+    if (++g->deb_cnt >= g->debounce_cnt_req) {
+      const float hold = g->servo->cur_deg;
+      Servo_SetEmaAlpha(g->servo, 1.0f);
+      Servo_SetMaxSpeedDps(g->servo, 999.0f);
+      Servo_SetTargetDegrees(g->servo, hold);
+
+      g->stopped  = 1;
+      g->state    = GRIP_TRIGGERED;
+      g->hold_deg = hold;
+      printf("[STOP] Triggered at press=%u, angle=%.1f°\r\n", raw, hold);
+      return g->state;
+    }
+  } else {
+    g->deb_cnt = 0;
+  }
 
   if (!Servo_IsBusy(g->servo, g->tol_deg)) {
-    g->stopped = 1;
-    g->state   = GRIP_REACHED;
-    return g->state;
+    static uint16_t empty_cnt = 0;
+    if (raw < (g->press_thresh_raw - 10)) {
+      if (++empty_cnt >= g->debounce_cnt_req) {
+        g->stopped = 1;
+        g->state   = GRIP_REACHED;
+        return g->state;
+      }
+    } else {
+      empty_cnt = 0;
+    }
   }
+
   return GRIP_RUNNING;
 }
 

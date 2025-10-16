@@ -8,6 +8,7 @@
 "./Core/Src/main.o"
 "./Core/Src/motion.o"
 "./Core/Src/pressure.o"
+"./Core/Src/script.o"
 "./Core/Src/servo.o"
 "./Core/Src/stm32f4xx_hal_msp.o"
 "./Core/Src/stm32f4xx_it.o"

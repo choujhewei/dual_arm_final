@@ -6,25 +6,54 @@
  */
 
 #include "dynamixel.h"
+#include "main.h"
 #include <string.h>
 
-Dynamixel_t Dynamixel_Handle;
+DynamixelBus_t Dynamixel_Handle_R;
+DynamixelBus_t Dynamixel_Handle_L;
 
-void Dynamixel_begin(UART_HandleTypeDef* uart, GPIO_TypeDef* dir_port, uint16_t pin) {
-    Dynamixel_Handle.huart = uart;
-    Dynamixel_Handle.dir_port = dir_port;
-    Dynamixel_Handle.dir_pin = pin;
-    Dynamixel_Handle.dma_rx_complete_flag = false;
+static DynamixelBus_t* g_active_bus = NULL;
+
+static inline DynamixelBus_t* bus_for_id(uint8_t id){
+    if (id >= DXL_RIGHT_ID_MIN && id <= DXL_RIGHT_ID_MAX) return &Dynamixel_Handle_R; // UART4
+    if (id >= DXL_LEFT_ID_MIN  && id <= DXL_LEFT_ID_MAX)  return &Dynamixel_Handle_L; // UART5
+    return &Dynamixel_Handle_R; // 超出範圍時的預設（你也可改成 assert 或回傳 NULL）
+}
+
+static void bus_begin(DynamixelBus_t* b, UART_HandleTypeDef* uart, GPIO_TypeDef* dir_port, uint16_t pin){
+    b->huart   = uart;
+    b->dir_port= dir_port;
+    b->dir_pin = pin;
+    b->dma_rx_complete_flag = false;
     HAL_GPIO_WritePin(dir_port, pin, GPIO_PIN_RESET);
 }
 
+void Dynamixel_begin_right(UART_HandleTypeDef* uart, GPIO_TypeDef* dir_port, uint16_t pin){ bus_begin(&Dynamixel_Handle_R, uart, dir_port, pin); }
+void Dynamixel_begin_left (UART_HandleTypeDef* uart, GPIO_TypeDef* dir_port, uint16_t pin){ bus_begin(&Dynamixel_Handle_L, uart, dir_port, pin); }
+
+void Dynamixel_onDmaRxComplete(UART_HandleTypeDef *huart){
+    if (Dynamixel_Handle_R.huart && huart->Instance == Dynamixel_Handle_R.huart->Instance) {
+        Dynamixel_Handle_R.dma_rx_complete_flag = true;
+    } else if (Dynamixel_Handle_L.huart && huart->Instance == Dynamixel_Handle_L.huart->Instance) {
+        Dynamixel_Handle_L.dma_rx_complete_flag = true;
+    }
+}
+
+static inline void setDirPin(DynamixelBus_t* b, bool is_tx){
+    HAL_GPIO_WritePin(b->dir_port, b->dir_pin, is_tx ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
 void Dynamixel_setDirPin(bool is_tx) {
-    HAL_GPIO_WritePin(Dynamixel_Handle.dir_port, Dynamixel_Handle.dir_pin, is_tx ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    if (g_active_bus) {
+        HAL_GPIO_WritePin(g_active_bus->dir_port, g_active_bus->dir_pin,
+                          is_tx ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    }
 }
 
 void Dynamixel_transmitPacket(uint8_t id, uint8_t instruction, const uint8_t* params, uint16_t param_len) {
     uint8_t packet[300];
     if (param_len > sizeof(packet) - 14) return;
+    g_active_bus = bus_for_id(id);
     uint16_t len = param_len + 10;
     packet[0]=0xFF; packet[1]=0xFF; packet[2]=0xFD; packet[3]=0x00;
     packet[4]=id;
@@ -35,21 +64,25 @@ void Dynamixel_transmitPacket(uint8_t id, uint8_t instruction, const uint8_t* pa
     uint16_t crc=update_crc(0,packet,len-2);
     packet[len-2]=crc&0xFF;
     packet[len-1]=(crc>>8)&0xFF;
-    Dynamixel_setDirPin(true);
-    HAL_UART_Transmit(Dynamixel_Handle.huart,packet,len,HAL_MAX_DELAY);
-    while(__HAL_UART_GET_FLAG(Dynamixel_Handle.huart,UART_FLAG_TC)==RESET);
-    Dynamixel_setDirPin(false);
+    setDirPin(g_active_bus, true);
+    HAL_UART_Transmit(g_active_bus->huart, packet, len, HAL_MAX_DELAY);
+    while (__HAL_UART_GET_FLAG(g_active_bus->huart, UART_FLAG_TC) == RESET);
+    setDirPin(g_active_bus, false);
 }
 
-bool Dynamixel_receiveStatusPacket(uint8_t* buf,uint16_t size,uint32_t tmo){
-    Dynamixel_Handle.dma_rx_complete_flag=false;
-    if(HAL_UART_GetState(Dynamixel_Handle.huart)!=HAL_UART_STATE_READY)
-        HAL_UART_Abort_IT(Dynamixel_Handle.huart);
-    if(HAL_UART_Receive_DMA(Dynamixel_Handle.huart,buf,size)!=HAL_OK) return false;
-    uint32_t st=HAL_GetTick();
-    while(!Dynamixel_Handle.dma_rx_complete_flag && (HAL_GetTick()-st<tmo));
-    if(!Dynamixel_Handle.dma_rx_complete_flag){
-        HAL_UART_Abort_IT(Dynamixel_Handle.huart);
+bool Dynamixel_receiveStatusPacket(uint8_t* buf, uint16_t size, uint32_t tmo){
+    if (!g_active_bus) return false;
+    g_active_bus->dma_rx_complete_flag = false;
+
+    if (HAL_UART_GetState(g_active_bus->huart) != HAL_UART_STATE_READY)
+        HAL_UART_Abort_IT(g_active_bus->huart);
+
+    if (HAL_UART_Receive_DMA(g_active_bus->huart, buf, size) != HAL_OK) return false;
+
+    uint32_t st = HAL_GetTick();
+    while (!g_active_bus->dma_rx_complete_flag && (HAL_GetTick() - st < tmo));
+    if (!g_active_bus->dma_rx_complete_flag){
+        HAL_UART_Abort_IT(g_active_bus->huart);
         return false;
     }
     return (buf[0]==0xFF && buf[1]==0xFF && buf[2]==0xFD && buf[8]==0x00);
@@ -86,23 +119,66 @@ int32_t Dynamixel_getPresentPosition(uint8_t id){
     return -1;
 }
 
-void Dynamixel_SyncWrite(uint16_t addr,uint16_t len,const uint8_t* ids,uint8_t cnt,const uint8_t* data){
+void Dynamixel_SyncWrite(uint16_t address, uint16_t data_len, const uint8_t* ids, uint8_t id_count, const uint8_t* all_data){
     const uint8_t INST_SYNC_WRITE=0x83;
-    uint16_t plen=4+(len+1)*cnt;
-    uint8_t p[plen];
-    p[0]=addr&0xFF;p[1]=(addr>>8)&0xFF;p[2]=len&0xFF;p[3]=(len>>8)&0xFF;
-    uint16_t pos=4;
-    for(uint8_t i=0;i<cnt;i++){p[pos++]=ids[i];memcpy(&p[pos],&data[i*len],len);pos+=len;}
-    Dynamixel_transmitPacket(0xFE,INST_SYNC_WRITE,p,plen);
+
+    uint8_t idsR[14], idsL[14]; uint8_t nR=0, nL=0;
+    for (uint8_t i = 0; i < id_count; i++) {
+        if (ids[i] >= DXL_RIGHT_ID_MIN && ids[i] <= DXL_RIGHT_ID_MAX) {
+            idsR[nR++] = ids[i];
+        } else if (ids[i] >= DXL_LEFT_ID_MIN && ids[i] <= DXL_LEFT_ID_MAX) {
+            idsL[nL++] = ids[i];
+        }
+    }
+
+    if (nR){
+        g_active_bus = &Dynamixel_Handle_R;
+        uint16_t plen = 4 + (data_len+1)*nR;
+        uint8_t p[4 + (data_len+1)*14];
+        p[0]=address&0xFF; p[1]=(address>>8)&0xFF; p[2]=data_len&0xFF; p[3]=(data_len>>8)&0xFF;
+        uint16_t pos=4;
+        for (uint8_t k=0;k<nR;k++){ p[pos++]=idsR[k]; memcpy(&p[pos], &all_data[(idsR[k]-1)*data_len], data_len); pos+=data_len; }
+        Dynamixel_transmitPacket(0xFE, INST_SYNC_WRITE, p, plen);
+    }
+    if (nL){
+        g_active_bus = &Dynamixel_Handle_L;
+        uint16_t plen = 4 + (data_len+1)*nL;
+        uint8_t p[4 + (data_len+1)*14];
+        p[0]=address&0xFF; p[1]=(address>>8)&0xFF; p[2]=data_len&0xFF; p[3]=(data_len>>8)&0xFF;
+        uint16_t pos=4;
+        for (uint8_t k=0;k<nL;k++){ p[pos++]=idsL[k]; memcpy(&p[pos], &all_data[(idsL[k]-1)*data_len], data_len); pos+=data_len; }
+        Dynamixel_transmitPacket(0xFE, INST_SYNC_WRITE, p, plen);
+    }
 }
 
-void Dynamixel_SyncRead(uint16_t addr,uint16_t len,const uint8_t* ids,uint8_t cnt){
+void Dynamixel_SyncRead(uint16_t address, uint16_t data_len, const uint8_t* ids, uint8_t id_count){
     const uint8_t INST_SYNC_READ=0x82;
-    uint16_t plen=4+cnt;
-    uint8_t p[plen];
-    p[0]=addr&0xFF;p[1]=(addr>>8)&0xFF;p[2]=len&0xFF;p[3]=(len>>8)&0xFF;
-    for(uint8_t i=0;i<cnt;i++)p[4+i]=ids[i];
-    Dynamixel_transmitPacket(0xFE,INST_SYNC_READ,p,plen);
+
+    uint8_t idsR[14], idsL[14]; uint8_t nR=0, nL=0;
+    for (uint8_t i = 0; i < id_count; i++) {
+        if (ids[i] >= DXL_RIGHT_ID_MIN && ids[i] <= DXL_RIGHT_ID_MAX) {
+            idsR[nR++] = ids[i];
+        } else if (ids[i] >= DXL_LEFT_ID_MIN && ids[i] <= DXL_LEFT_ID_MAX) {
+            idsL[nL++] = ids[i];
+        }
+    }
+
+    if (nR){
+        g_active_bus = &Dynamixel_Handle_R;
+        uint16_t plen=4+nR;
+        uint8_t p[4+14];
+        p[0]=address&0xFF; p[1]=(address>>8)&0xFF; p[2]=data_len&0xFF; p[3]=(data_len>>8)&0xFF;
+        for (uint8_t i=0;i<nR;i++) p[4+i]=idsR[i];
+        Dynamixel_transmitPacket(0xFE, INST_SYNC_READ, p, plen);
+    }
+    if (nL){
+        g_active_bus = &Dynamixel_Handle_L;
+        uint16_t plen=4+nL;
+        uint8_t p[4+14];
+        p[0]=address&0xFF; p[1]=(address>>8)&0xFF; p[2]=data_len&0xFF; p[3]=(data_len>>8)&0xFF;
+        for (uint8_t i=0;i<nL;i++) p[4+i]=idsL[i];
+        Dynamixel_transmitPacket(0xFE, INST_SYNC_READ, p, plen);
+    }
 }
 
 unsigned short update_crc(unsigned short c,unsigned char *d,unsigned short s){

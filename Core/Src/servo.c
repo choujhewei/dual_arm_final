@@ -177,7 +177,7 @@ bool Servo_MoveToBlocking(ServoHandle_t* s, float deg, float tol_deg, float dps,
 
 void ServoSystem_Init(void)
 {
-  Servo_Attach(&s1, &htim3, TIM_CHANNEL_1, 800, 2200);
+  Servo_Attach(&s1, &htim3, TIM_CHANNEL_1, 500, 3000);
   Servo_Attach(&s2, &htim3, TIM_CHANNEL_2, 800, 2200);
 
   Servo_SetMaxSpeedDps(&s1, 80.0f);
@@ -185,13 +185,13 @@ void ServoSystem_Init(void)
   Servo_SetEmaAlpha(&s1, 0.35f);
   Servo_SetEmaAlpha(&s2, 0.35f);
 
-  Servo_WriteDegrees(&s1, 100.0f);
+  Servo_WriteDegrees(&s1, 180.0f);
   HAL_Delay(300);
-  Servo_WriteDegrees(&s2, 100.0f);
+  Servo_WriteDegrees(&s2, 180.0f);
   HAL_Delay(300);
 
-  GripStop_Init(&g1, &s1, PRESS_RIGHT, 100.0f, 20.0f, 100.0f, 2, 80.0f, 0.35f, 1.0f, 5000);
-  GripStop_Init(&g2, &s2, PRESS_LEFT,  100.0f, 20.0f, 200.0f, 1, 80.0f, 0.35f, 1.0f, 5000);
+  GripStop_Init(&g1, &s1, PRESS_RIGHT, 180.0f, 30.0f, 2000.0f, 3, 80.0f, 0.35f, 1.0f, 5000);
+  GripStop_Init(&g2, &s2, PRESS_LEFT,  180.0f, 10.0f, 200.0f, 2, 80.0f, 0.35f, 1.0f, 5000);
 
   GripStop_Start(&g1);
   GripStop_Start(&g2);

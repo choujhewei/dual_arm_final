@@ -1,0 +1,12 @@
+../Core/Src/dynamixel.c:13:6:Dynamixel_begin	24	static
+../Core/Src/dynamixel.c:21:6:Dynamixel_setDirPin	16	static
+../Core/Src/dynamixel.c:25:6:Dynamixel_transmitPacket	328	static
+../Core/Src/dynamixel.c:44:6:Dynamixel_receiveStatusPacket	32	static
+../Core/Src/dynamixel.c:58:6:Dynamixel_readByte	48	static
+../Core/Src/dynamixel.c:69:6:Dynamixel_write	64	dynamic
+../Core/Src/dynamixel.c:76:6:Dynamixel_torqueOn	24	static
+../Core/Src/dynamixel.c:77:6:Dynamixel_setOperatingMode	16	static
+../Core/Src/dynamixel.c:79:9:Dynamixel_getPresentPosition	40	static
+../Core/Src/dynamixel.c:89:6:Dynamixel_SyncWrite	64	dynamic
+../Core/Src/dynamixel.c:99:6:Dynamixel_SyncRead	64	dynamic
+../Core/Src/dynamixel.c:108:16:update_crc	24	static

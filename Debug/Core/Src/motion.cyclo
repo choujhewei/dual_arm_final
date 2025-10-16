@@ -1,0 +1,10 @@
+../Core/Src/motion.c:24:6:init_dynamixels	3
+../Core/Src/motion.c:44:7:cnt_to_deg360	1
+../Core/Src/motion.c:48:9:deg0to360_to_cnt	1
+../Core/Src/motion.c:52:21:wrap360	3
+../Core/Src/motion.c:58:10:pv_raw_from_deg_s	1
+../Core/Src/motion.c:62:8:idx_of_id	3
+../Core/Src/motion.c:69:6:live_slowdown_until_reached	9
+../Core/Src/motion.c:122:6:parse_and_control	36
+../Core/Src/motion.c:211:6:init_move_all_to_180	3
+../Core/Src/motion.c:239:6:update_all_motors	3

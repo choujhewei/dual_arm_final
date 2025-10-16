@@ -1,0 +1,3 @@
+../Core/Src/pressure.c:12:10:Read_Pressure_Right	1
+../Core/Src/pressure.c:21:10:Read_Pressure_Left	1
+../Core/Src/pressure.c:30:6:sample_and_print	2

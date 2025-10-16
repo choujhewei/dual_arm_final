@@ -1,0 +1,5 @@
+../Core/Src/grip.c:14:24:read_pressure_raw	16	static
+../Core/Src/grip.c:19:6:GripStop_Init	48	static
+../Core/Src/grip.c:53:6:GripStop_Start	16	static
+../Core/Src/grip.c:68:15:GripStop_Update	32	static
+../Core/Src/grip.c:103:15:GripStop_RunBlocking	24	static

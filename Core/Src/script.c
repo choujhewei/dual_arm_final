@@ -11,6 +11,9 @@
 #include "main.h"
 #include "script.h"
 #include "motion.h"
+#include "servo.h"
+#include "grip.h"
+#include "pressure.h"
 
 static void build_cmd_from_step(const DualStep* st, char* out, size_t cap) {
     size_t pos = 0;
@@ -45,4 +48,22 @@ void execute_dual_script(const DualStep* steps, uint8_t step_count, uint32_t tim
 //        printf(".STEP %u/%u: %s\r\n", (unsigned)i + 1, (unsigned)step_count, cmd);
         parse_and_control(cmd);
     }
+}
+
+static DualStep demo[] = {
+	    { .R = { +30.0f, NAN,    NAN,    NAN,   NAN,   NAN,   NAN },
+	      .L = {  NAN,   NAN,   -45.0f,  NAN,   NAN,   NAN,   NAN } },
+
+	    { .R = {  NAN,  +60.0f, -20.0f,  NAN,   NAN,   NAN,   NAN },
+	      .L = {  NAN,   NAN,    NAN,    NAN,   NAN,   NAN,   NAN } },
+
+	    { .R = {  NAN,   NAN,    NAN,   +15.0f, NAN,   NAN,   NAN },
+	      .L = { +10.0f, NAN,    NAN,    NAN,   NAN,   NAN,   NAN } },
+};
+
+void run_script(void) {
+    execute_dual_script(demo, (uint8_t)(sizeof(demo)/sizeof(demo[0])), 0);
+    sample_and_print();
+    GripStop_Update(&g1);
+    GripStop_Update(&g2);
 }

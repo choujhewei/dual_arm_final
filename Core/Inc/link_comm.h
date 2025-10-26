@@ -17,6 +17,8 @@
 extern uint8_t rx_buffer[RX_BUFFER_SIZE];
 extern volatile bool data_ready;
 
+extern volatile char link_mark;
+
 void LinkComm_Init(UART_HandleTypeDef* huart);
 void LinkComm_Task(void);
 void print_to_link(const char *fmt, ...);

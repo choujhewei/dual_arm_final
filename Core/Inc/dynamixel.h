@@ -29,7 +29,7 @@ void Dynamixel_onDmaRxComplete(UART_HandleTypeDef *huart);
 void Dynamixel_setDirPin(bool is_tx);
 
 void Dynamixel_transmitPacket(uint8_t id, uint8_t instruction, const uint8_t* params, uint16_t param_len);
-bool Dynamixel_receiveStatusPacket(uint8_t* buffer, uint16_t buffer_size, uint32_t timeout_ms);
+bool Dynamixel_receiveStatusPacket(uint8_t* buf, uint16_t size, uint32_t timeout_ms);
 bool Dynamixel_readByte(uint8_t id, uint16_t address, uint8_t* value, uint32_t timeout_ms);
 
 void Dynamixel_write(uint8_t id, uint16_t address, const uint8_t* data, uint16_t data_len);

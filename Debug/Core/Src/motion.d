@@ -31,7 +31,7 @@ Core/Src/motion.o: ../Core/Src/motion.c ../Core/Inc/motion.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/link_comm.h
+ ../Core/Inc/link_comm.h ../Core/Inc/main.h
 ../Core/Inc/motion.h:
 ../Core/Inc/dynamixel.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
@@ -66,3 +66,4 @@ Core/Src/motion.o: ../Core/Src/motion.c ../Core/Inc/motion.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
 ../Core/Inc/link_comm.h:
+../Core/Inc/main.h:

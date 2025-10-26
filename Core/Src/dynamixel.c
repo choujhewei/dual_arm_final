@@ -8,6 +8,7 @@
 #include "dynamixel.h"
 #include "main.h"
 #include <string.h>
+#include <stdio.h>
 
 DynamixelBus_t Dynamixel_Handle_R;
 DynamixelBus_t Dynamixel_Handle_L;
@@ -15,9 +16,9 @@ DynamixelBus_t Dynamixel_Handle_L;
 static DynamixelBus_t* g_active_bus = NULL;
 
 static inline DynamixelBus_t* bus_for_id(uint8_t id){
-    if (id >= DXL_RIGHT_ID_MIN && id <= DXL_RIGHT_ID_MAX) return &Dynamixel_Handle_R; // UART4
-    if (id >= DXL_LEFT_ID_MIN  && id <= DXL_LEFT_ID_MAX)  return &Dynamixel_Handle_L; // UART5
-    return &Dynamixel_Handle_R; // 超出範圍時的預設（你也可改成 assert 或回傳 NULL）
+    if (id >= DXL_RIGHT_ID_MIN && id <= DXL_RIGHT_ID_MAX) return &Dynamixel_Handle_R;
+    if (id >= DXL_LEFT_ID_MIN  && id <= DXL_LEFT_ID_MAX)  return &Dynamixel_Handle_L;
+    return &Dynamixel_Handle_R;
 }
 
 static void bus_begin(DynamixelBus_t* b, UART_HandleTypeDef* uart, GPIO_TypeDef* dir_port, uint16_t pin){
@@ -50,24 +51,42 @@ void Dynamixel_setDirPin(bool is_tx) {
     }
 }
 
-void Dynamixel_transmitPacket(uint8_t id, uint8_t instruction, const uint8_t* params, uint16_t param_len) {
+void Dynamixel_transmitPacket(uint8_t id,
+                              uint8_t instruction,
+                              const uint8_t* params,
+                              uint16_t param_len)
+{
     uint8_t packet[300];
-    if (param_len > sizeof(packet) - 14) return;
-    g_active_bus = bus_for_id(id);
-    uint16_t len = param_len + 10;
-    packet[0]=0xFF; packet[1]=0xFF; packet[2]=0xFD; packet[3]=0x00;
-    packet[4]=id;
-    packet[5]=(param_len+3)&0xFF;
-    packet[6]=((param_len+3)>>8)&0xFF;
-    packet[7]=instruction;
-    if(param_len>0 && params) memcpy(&packet[8],params,param_len);
-    uint16_t crc=update_crc(0,packet,len-2);
-    packet[len-2]=crc&0xFF;
-    packet[len-1]=(crc>>8)&0xFF;
+    if (param_len > (sizeof(packet) - 14)) {
+        return;
+    }
+    if (id != 0xFE) {
+        g_active_bus = bus_for_id(id);
+    } else if (g_active_bus == NULL) {
+        g_active_bus = &Dynamixel_Handle_R;
+    }
+    const uint16_t length_field = (uint16_t)(param_len + 3);
+    uint16_t total_len = (uint16_t)(param_len + 10);
+    packet[0] = 0xFF;
+    packet[1] = 0xFF;
+    packet[2] = 0xFD;
+    packet[3] = 0x00;
+    packet[4] = id;
+    packet[5] = (uint8_t)(length_field & 0xFF);
+    packet[6] = (uint8_t)((length_field >> 8) & 0xFF);
+    packet[7] = instruction;
+    if (param_len > 0 && params) {
+        memcpy(&packet[8], params, param_len);
+    }
+    uint16_t crc = update_crc(0, packet, (uint16_t)(total_len - 2));
+    packet[total_len - 2] = (uint8_t)(crc & 0xFF);
+    packet[total_len - 1] = (uint8_t)((crc >> 8) & 0xFF);
     setDirPin(g_active_bus, true);
-    HAL_UART_Transmit(g_active_bus->huart, packet, len, HAL_MAX_DELAY);
-    while (__HAL_UART_GET_FLAG(g_active_bus->huart, UART_FLAG_TC) == RESET);
+    HAL_UART_Transmit(g_active_bus->huart, packet, total_len, HAL_MAX_DELAY);
+    while (__HAL_UART_GET_FLAG(g_active_bus->huart, UART_FLAG_TC) == RESET) {
+    }
     setDirPin(g_active_bus, false);
+
 }
 
 bool Dynamixel_receiveStatusPacket(uint8_t* buf, uint16_t size, uint32_t tmo){
@@ -93,8 +112,9 @@ bool Dynamixel_readByte(uint8_t id,uint16_t addr,uint8_t* val,uint32_t tmo){
     uint8_t p[4]={addr&0xFF,(addr>>8)&0xFF,1,0};
     Dynamixel_transmitPacket(id,INST_READ,p,4);
     uint8_t b[12];
-    if(Dynamixel_receiveStatusPacket(b,12,tmo)){
-        if(b[4]==id && b[8]==0x00){*val=b[9];return true;}
+    if (Dynamixel_receiveStatusPacket(b, sizeof(b), tmo)) {
+        *val = b[9];
+        return true;
     }
     return false;
 }
@@ -119,34 +139,48 @@ int32_t Dynamixel_getPresentPosition(uint8_t id){
     return -1;
 }
 
-void Dynamixel_SyncWrite(uint16_t address, uint16_t data_len, const uint8_t* ids, uint8_t id_count, const uint8_t* all_data){
-    const uint8_t INST_SYNC_WRITE=0x83;
+void Dynamixel_SyncWrite(uint16_t address, uint16_t data_len,
+                         const uint8_t* ids, uint8_t id_count,
+                         const uint8_t* all_data)
+{
+    const uint8_t INST_SYNC_WRITE = 0x83;
 
-    uint8_t idsR[14], idsL[14]; uint8_t nR=0, nL=0;
+    uint8_t  idsR[14], idsL[14];
+    uint8_t  nR = 0, nL = 0;
+    uint8_t  dataR[(size_t)14 * (size_t)data_len];
+    uint8_t  dataL[(size_t)14 * (size_t)data_len];
+    uint16_t posR = 0, posL = 0;
+
     for (uint8_t i = 0; i < id_count; i++) {
-        if (ids[i] >= DXL_RIGHT_ID_MIN && ids[i] <= DXL_RIGHT_ID_MAX) {
-            idsR[nR++] = ids[i];
-        } else if (ids[i] >= DXL_LEFT_ID_MIN && ids[i] <= DXL_LEFT_ID_MAX) {
-            idsL[nL++] = ids[i];
+        const uint8_t id = ids[i];
+        const uint8_t* chunk = &all_data[(size_t)i * (size_t)data_len]; // ★用 i 對齊
+        if (id >= DXL_RIGHT_ID_MIN && id <= DXL_RIGHT_ID_MAX) {
+            idsR[nR++] = id;
+            memcpy(&dataR[posR], chunk, data_len);
+            posR += data_len;
+        } else if (id >= DXL_LEFT_ID_MIN && id <= DXL_LEFT_ID_MAX) {
+            idsL[nL++] = id;
+            memcpy(&dataL[posL], chunk, data_len);
+            posL += data_len;
         }
     }
 
-    if (nR){
+    if (nR) {
         g_active_bus = &Dynamixel_Handle_R;
-        uint16_t plen = 4 + (data_len+1)*nR;
-        uint8_t p[4 + (data_len+1)*14];
+        uint16_t plen = 4 + (uint16_t)nR * (data_len + 1);
+        uint8_t  p[4 + (size_t)14 * (size_t)(data_len + 1)];
         p[0]=address&0xFF; p[1]=(address>>8)&0xFF; p[2]=data_len&0xFF; p[3]=(data_len>>8)&0xFF;
-        uint16_t pos=4;
-        for (uint8_t k=0;k<nR;k++){ p[pos++]=idsR[k]; memcpy(&p[pos], &all_data[(idsR[k]-1)*data_len], data_len); pos+=data_len; }
+        uint16_t w=4;
+        for (uint8_t k=0;k<nR;k++){ p[w++]=idsR[k]; memcpy(&p[w], &dataR[(size_t)k*data_len], data_len); w+=data_len; }
         Dynamixel_transmitPacket(0xFE, INST_SYNC_WRITE, p, plen);
     }
-    if (nL){
+    if (nL) {
         g_active_bus = &Dynamixel_Handle_L;
-        uint16_t plen = 4 + (data_len+1)*nL;
-        uint8_t p[4 + (data_len+1)*14];
+        uint16_t plen = 4 + (uint16_t)nL * (data_len + 1);
+        uint8_t  p[4 + (size_t)14 * (size_t)(data_len + 1)];
         p[0]=address&0xFF; p[1]=(address>>8)&0xFF; p[2]=data_len&0xFF; p[3]=(data_len>>8)&0xFF;
-        uint16_t pos=4;
-        for (uint8_t k=0;k<nL;k++){ p[pos++]=idsL[k]; memcpy(&p[pos], &all_data[(idsL[k]-1)*data_len], data_len); pos+=data_len; }
+        uint16_t w=4;
+        for (uint8_t k=0;k<nL;k++){ p[w++]=idsL[k]; memcpy(&p[w], &dataL[(size_t)k*data_len], data_len); w+=data_len; }
         Dynamixel_transmitPacket(0xFE, INST_SYNC_WRITE, p, plen);
     }
 }

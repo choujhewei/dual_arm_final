@@ -1,2 +1,3 @@
-../Core/Src/script.c:15:13:build_cmd_from_step	23
-../Core/Src/script.c:40:6:execute_dual_script	2
+../Core/Src/script.c:18:13:build_cmd_from_step	23
+../Core/Src/script.c:43:6:execute_dual_script	2
+../Core/Src/script.c:64:6:run_script	1

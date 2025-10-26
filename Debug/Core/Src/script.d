@@ -30,7 +30,9 @@ Core/Src/script.o: ../Core/Src/script.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/script.h ../Core/Inc/motion.h
+ ../Core/Inc/script.h ../Core/Inc/motion.h ../Core/Inc/servo.h \
+ ../Core/Inc/grip.h ../Core/Inc/adc.h ../Core/Inc/main.h \
+ ../Core/Inc/pressure.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -65,3 +67,8 @@ Core/Src/script.o: ../Core/Src/script.c ../Core/Inc/main.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
 ../Core/Inc/script.h:
 ../Core/Inc/motion.h:
+../Core/Inc/servo.h:
+../Core/Inc/grip.h:
+../Core/Inc/adc.h:
+../Core/Inc/main.h:
+../Core/Inc/pressure.h:

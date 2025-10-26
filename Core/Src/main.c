@@ -35,14 +35,15 @@
 #include "dwt_util.h"
 #include "script.h"
 #include <math.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 #define DO_INIT_HOME 1
 #define USE_MY_DWT
-const uint8_t DXL_ID_LIST[DXL_ID_CNT] = { 1, 2, 3, 4, 5, 6, 7 };
-const float   VEL_DPS[DXL_ID_CNT]     = { 20, 20, 20, 20, 20, 20, 20 };
+const uint8_t DXL_ID_LIST[DXL_ID_CNT] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
+const float   VEL_DPS[DXL_ID_CNT]     = { 20, 20, 20, 20, 20, 20, 20, 20 ,20 ,20, 20, 20, 20, 20 };
 
 #ifdef __GNUC__
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
@@ -58,16 +59,6 @@ PUTCHAR_PROTOTYPE
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-DualStep demo[] = {
-    { .R = { +30.0f, NAN,    NAN,   NAN,   NAN,   NAN,   NAN },
-      .L = { NAN,    NAN,   -45.0f, NAN,   NAN,   NAN,   NAN } },
-
-    { .R = { NAN,   +60.0f, -20.0f, NAN,   NAN,   NAN,   NAN },
-      .L = { NAN,    NAN,    NAN,   NAN,   NAN,   NAN,   NAN } },
-
-    { .R = { NAN,    NAN,    NAN,  +15.0f, NAN,   NAN,   NAN },
-      .L = { +10.0f, NAN,    NAN,   NAN,   NAN,   NAN,   NAN } },
-};
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -140,9 +131,7 @@ int main(void)
   init_dynamixels();
 
   #if DO_INIT_HOME
-  print_to_link("Ready. Init homing...\r\n");
   init_move_all_to_180();
-  print_to_link("Init done.\r\n");
   #endif
 
   ServoSystem_Init();
@@ -155,11 +144,11 @@ int main(void)
   {
 	LinkComm_Task();
     update_all_motors();
-//    sample_and_print();
-//    GripStop_Update(&g1);
-//    GripStop_Update(&g2);
-//    execute_dual_script(demo, sizeof(demo)/sizeof(demo[0]), 8000);
+
     HAL_Delay(2);
+//    if (link_mark == '$' && done){
+//    	run_script();
+//    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

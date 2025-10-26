@@ -21,4 +21,6 @@ void parse_and_control(char* input);
 void init_move_all_to_180(void);
 void update_all_motors(void);
 
+extern volatile bool done;
+
 #endif /* INC_MOTION_H_ */

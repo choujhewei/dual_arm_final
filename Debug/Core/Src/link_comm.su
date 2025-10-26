@@ -1,5 +1,5 @@
-../Core/Src/link_comm.c:21:6:LinkComm_Init	16	static
-../Core/Src/link_comm.c:28:6:LinkComm_Task	8	static
-../Core/Src/link_comm.c:36:6:print_to_link	280	static
-../Core/Src/link_comm.c:45:6:HAL_UART_RxCpltCallback	24	static
-../Core/Src/link_comm.c:61:6:HAL_UART_IDLE_Callback	24	static
+../Core/Src/link_comm.c:23:6:LinkComm_Init	16	static
+../Core/Src/link_comm.c:30:6:LinkComm_Task	16	static
+../Core/Src/link_comm.c:48:6:print_to_link	280	static
+../Core/Src/link_comm.c:57:6:HAL_UART_RxCpltCallback	24	static
+../Core/Src/link_comm.c:74:6:HAL_UART_IDLE_Callback	24	static

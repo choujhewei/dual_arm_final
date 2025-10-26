@@ -15,4 +15,6 @@ typedef struct {
 
 void execute_dual_script(const DualStep* steps, uint8_t step_count, uint32_t timeout_ms);
 
+void run_script(void);
+
 #endif /* INC_SCRIPT_H_ */

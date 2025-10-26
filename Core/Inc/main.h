@@ -59,7 +59,7 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN Private defines */
-#define DXL_ID_CNT 7
+#define DXL_ID_CNT 14
 
 extern const uint8_t DXL_ID_LIST[DXL_ID_CNT];
 extern const float   VEL_DPS[DXL_ID_CNT];

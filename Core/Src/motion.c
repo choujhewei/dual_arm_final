@@ -8,6 +8,7 @@
 #include "motion.h"
 #include "dynamixel.h"
 #include "link_comm.h"
+#include "main.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,26 +19,44 @@
 
 extern const uint8_t DXL_ID_LIST[];
 extern const float VEL_DPS[];
-#define DXL_ID_CNT 7
+#define DXL_ID_CNT 14
 static float g_target_deg[DXL_ID_CNT];
+volatile bool done = false;
+
+static bool dxl_write_u8(uint8_t id, uint16_t addr, uint8_t val, uint32_t tmo_ms){
+    Dynamixel_write(id, addr, &val, 1);
+    HAL_Delay(3);
+    return true;
+}
 
 void init_dynamixels(void) {
-    for (uint8_t i = 0; i < DXL_ID_CNT; i++) {
-         uint8_t current_id = DXL_ID_LIST[i];
-         Dynamixel_write(current_id, 64, (uint8_t[]){0}, 1);
-         HAL_Delay(50);
-         Dynamixel_setOperatingMode(current_id, 3);
-         HAL_Delay(50);
-         uint16_t P = 1500, I = 60, D = 140;
-         Dynamixel_write(2, 84, (uint8_t*)&P, 2);
-         Dynamixel_write(2, 82, (uint8_t*)&I, 2);
-         Dynamixel_write(2, 80, (uint8_t*)&D, 2);
-         Dynamixel_write(current_id, 64, (uint8_t[]){1}, 1);
-         HAL_Delay(300);
-         for (uint8_t i = 0; i < DXL_ID_CNT; ++i) {
-             g_target_deg[i] = 180.0f;
-         }
-    }
+	 for (uint8_t i = 0; i < DXL_ID_CNT; i++) {
+	      uint8_t id = DXL_ID_LIST[i];
+	      dxl_write_u8(id, 64, 0, 50);
+	 }
+
+	 for (uint8_t i = 0; i < DXL_ID_CNT; i++) {
+          uint8_t id = DXL_ID_LIST[i];
+          dxl_write_u8(id, 11, 3, 50);
+     }
+
+	 for (uint8_t i = 0; i < DXL_ID_CNT; i++) {
+	      uint8_t id = DXL_ID_LIST[i];
+	      dxl_write_u8(id, 64, 1, 50);
+	      HAL_Delay(20);
+	 }
+
+	 uint16_t P = 1500, I = 60, D = 140;
+	 Dynamixel_write(2, 84, (uint8_t*)&P, 2);
+	 Dynamixel_write(2, 82, (uint8_t*)&I, 2);
+	 Dynamixel_write(2, 80, (uint8_t*)&D, 2);
+	 Dynamixel_write(9, 84, (uint8_t*)&P, 2);
+	 Dynamixel_write(9, 82, (uint8_t*)&I, 2);
+	 Dynamixel_write(9, 80, (uint8_t*)&D, 2);
+     for (uint8_t i = 0; i < DXL_ID_CNT; ++i) {
+          g_target_deg[i] = 180.0f;
+     }
+
 }
 
 float cnt_to_deg360(int32_t pos_cnt) {
@@ -65,48 +84,79 @@ int8_t idx_of_id(uint8_t id) {
 	return -1;
 }
 
-bool live_slowdown_until_reached(uint8_t target_count, const uint8_t* target_ids, const float* target_degs, uint32_t timeout) {
+bool live_slowdown_until_reached(uint8_t target_count,
+                                 const uint8_t* target_ids,
+                                 const float*   target_degs,
+                                 uint32_t timeout)
+{
     uint32_t start_time = HAL_GetTick();
-    bool all_reached = false;
     const uint16_t ADDR_PRESENT_POSITION = 132;
     const uint16_t POS_DATA_LEN = 4;
-    int32_t current_positions[DXL_ID_CNT] = {0};
+
+    int32_t  current_positions[DXL_ID_CNT];
+    for (uint8_t i = 0; i < DXL_ID_CNT; ++i) current_positions[i] = -1;
+
+    uint8_t idsR[14], idsL[14];
+    uint8_t nR = 0,   nL = 0;
+    for (uint8_t i = 0; i < target_count; ++i) {
+        uint8_t id = target_ids[i];
+        if (id >= DXL_RIGHT_ID_MIN && id <= DXL_RIGHT_ID_MAX) idsR[nR++] = id;
+        else if (id >= DXL_LEFT_ID_MIN && id <= DXL_LEFT_ID_MAX) idsL[nL++] = id;
+    }
 
     printf(".--------------------------\r\n");
     while (HAL_GetTick() - start_time < timeout) {
-        Dynamixel_SyncRead(ADDR_PRESENT_POSITION, POS_DATA_LEN, target_ids, target_count);
-
-        for (uint8_t i = 0; i < target_count; i++) {
-            uint8_t packet_buffer[15];
-            current_positions[i] = -1;
-            if (Dynamixel_receiveStatusPacket(packet_buffer, 15, 30)) {
-                uint8_t response_id = packet_buffer[4];
-                int8_t response_idx = idx_of_id(response_id);
-                if(response_idx != -1){
-                     current_positions[response_idx] =
-                        (int32_t)(packet_buffer[9] | (packet_buffer[10] << 8) |
-                                  (packet_buffer[11] << 16) | (packet_buffer[12] << 24));
+        if (nR) {
+            Dynamixel_SyncRead(ADDR_PRESENT_POSITION, POS_DATA_LEN, idsR, nR);
+            for (uint8_t k = 0; k < nR; ++k) {
+                uint8_t pkt[15];
+                if (Dynamixel_receiveStatusPacket(pkt, sizeof(pkt), 60)) {
+                    uint8_t rid = pkt[4];
+                    int8_t  rix = idx_of_id(rid);
+                    if (rix >= 0) {
+                        current_positions[rix] = (int32_t)(pkt[9] |
+                                                (pkt[10] << 8) |
+                                                (pkt[11] << 16) |
+                                                (pkt[12] << 24));
+                    }
+                }
+            }
+        }
+        if (nL) {
+            Dynamixel_SyncRead(ADDR_PRESENT_POSITION, POS_DATA_LEN, idsL, nL);
+            for (uint8_t k = 0; k < nL; ++k) {
+                uint8_t pkt[15];
+                if (Dynamixel_receiveStatusPacket(pkt, sizeof(pkt), 60)) {
+                    uint8_t lid = pkt[4];
+                    int8_t  lix = idx_of_id(lid);
+                    if (lix >= 0) {
+                        current_positions[lix] = (int32_t)(pkt[9] |
+                                                (pkt[10] << 8) |
+                                                (pkt[11] << 16) |
+                                                (pkt[12] << 24));
+                    }
                 }
             }
         }
 
-        all_reached = true;
+        bool all_reached = true;
         printf("Looping (t=%ld):", (long)(HAL_GetTick() - start_time));
-        for (uint8_t i = 0; i < target_count; i++) {
+        for (uint8_t i = 0; i < target_count; ++i) {
             uint8_t id = target_ids[i];
-            if (current_positions[i] == -1) {
+            int8_t  ix = idx_of_id(id);
+            if (ix < 0 || current_positions[ix] == -1) {
                 printf(" [ID %d Read FAILED!]", id);
                 all_reached = false;
             } else {
-                float current_deg = cnt_to_deg360(current_positions[i]);
-                float error_deg = target_degs[i] - current_deg;
-                printf(" [ID %d: %.1f, E:%.1f]", id, current_deg, error_deg);
-                if (fabs(error_deg) > 1.5f) {
+                float cur_deg = cnt_to_deg360(current_positions[ix]);
+                float err_deg = target_degs[i] - cur_deg;
+                printf(" [ID %d: %.1f, E:%.1f]", id, cur_deg, err_deg);
+                if (fabsf(err_deg) > 1.5f) {
                     all_reached = false;
                 }
             }
         }
-        printf(" \r\n");
+        printf("\r\n");
 
         if (all_reached) {
             printf(".--- MOTORS REACHED ---\r\n");
@@ -114,6 +164,7 @@ bool live_slowdown_until_reached(uint8_t target_count, const uint8_t* target_ids
         }
         HAL_Delay(80);
     }
+
     printf(".--- WAIT TIMEOUT ---\r\n");
     return false;
 }
@@ -200,8 +251,15 @@ void parse_and_control(char* input) {
         const uint32_t TIMEOUT_MS = 8000;
         bool ok = live_slowdown_until_reached(DXL_ID_CNT, DXL_ID_LIST, goal_all, TIMEOUT_MS);
 
-        if (ok)  print_to_link("Done\r\n");
-        else     print_to_link("timeout\r\n");
+        if (ok)  {
+        	print_to_link("Done\r\n");
+        	if (link_mark == '$'){
+        	done = true;
+        	}
+        }
+        else     {
+        	print_to_link("timeout\r\n");
+        }
     }
 }
 

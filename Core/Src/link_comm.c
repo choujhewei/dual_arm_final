@@ -18,6 +18,8 @@ uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint16_t last_rx_index = 0;
 volatile bool data_ready = false;
 
+volatile char link_mark = 0;
+
 void LinkComm_Init(UART_HandleTypeDef* huart) {
     link_uart = huart;
     HAL_UART_Receive_DMA(link_uart, rx_buffer, RX_BUFFER_SIZE);
@@ -28,6 +30,16 @@ void LinkComm_Init(UART_HandleTypeDef* huart) {
 void LinkComm_Task(void) {
     if (data_ready) {
         data_ready = false;
+        link_mark = 0;
+        for (uint32_t i = 0; i < RX_BUFFER_SIZE && rx_buffer[i] != '\0'; ++i) {
+             char c = (char)rx_buffer[i];
+             if (c == '!') break;
+             if (c == '#' || c == '$') {
+                 link_mark = c;
+                 break;
+             }
+        }
+//        printf("[USART6 RX] %s\r\n", rx_buffer);
         parse_and_control((char*)rx_buffer);
         memset(rx_buffer, 0, sizeof(rx_buffer));
     }
@@ -46,7 +58,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == link_uart->Instance) {
         uint8_t rx_data = rx_char;
         if (rx_data == '!' || last_rx_index >= RX_BUFFER_SIZE - 1) {
-            rx_buffer[last_rx_index] = '\0';
+        	rx_buffer[last_rx_index++] = rx_data;
+        	rx_buffer[last_rx_index] = '\0';
             last_rx_index = 0;
             data_ready = true;
         } else {
